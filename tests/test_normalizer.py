@@ -26,7 +26,12 @@ def _stub_genlayer():
     m.u256 = int
 
 
-_stub_genlayer()
+_stubbed = False
+try:  # only stub when the real SDK is unavailable
+    import genlayer  # noqa: F401
+except Exception:
+    _stub_genlayer()
+    _stubbed = True
 
 import importlib.util
 from pathlib import Path
@@ -42,8 +47,10 @@ except Exception as e:  # contract needs full SDK for class def; helpers still t
     start = src.index('_TIER =')
     end = src.index('@allow_storage')
     ns: dict = {"u256": int}
-    exec("import json\n" + src[start:end], ns)
+    exec("import json\nfrom datetime import datetime, timezone\n" + src[start:end], ns)
     bbx = types.SimpleNamespace(**{k: v for k, v in ns.items() if k.startswith(("_",)) or k in ("_TIER",)})
+if _stubbed:  # release the stub so other tests (tests/direct) get the real SDK
+    sys.modules.pop("genlayer", None)
 
 
 def test_fenced_json():
@@ -65,3 +72,16 @@ def test_garbage_and_severity_coercion():
     assert bbx._norm("not json at all")["decision"] == "invalid"
     assert bbx._norm({"decision": "valid", "severity": "CRITICAL!!!"})["severity"] == "info"
     assert bbx._norm({"decision": "valid", "severity": "low"})["severity"] == "low"
+
+
+def test_tier_payout_is_deterministic_and_binds_amount():
+    rw = (1000, 500, 100, 50)
+    assert bbx._tier_payout(rw, "critical") == 1000
+    assert bbx._tier_payout(rw, "CRITICAL") == 1000
+    assert bbx._tier_payout(rw, "high") == 500
+    assert bbx._tier_payout(rw, "info") == 0
+    assert bbx._tier_payout(rw, "low") == 50
+    # one-tier tolerance must not hide a payout change
+    assert bbx._tier_payout(rw, "high") != bbx._tier_payout(rw, "medium")
+    # identical verdicts derive the identical amount on every node
+    assert bbx._tier_payout(rw, "medium") == bbx._tier_payout(rw, "medium")

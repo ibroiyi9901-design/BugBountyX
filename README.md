@@ -4,7 +4,7 @@ Standalone, reusable primitive for decentralized bug bounties: sponsors fund GEN
 escrow per severity, hunters submit structured reports, GenLayer validators reach
 LLM consensus on triage, valid reports auto-pay, disputes go to arbitration.
 
-- Contract: `contracts/BugBountyX.py` — **439 lines**, single file, pinned runner
+- Contract: `contracts/BugBountyX.py` — **480 lines**, single file, pinned runner
 - Chain: GenLayer (testnet-asimov / testnet-bradbury / studionet / localnet)
 - Category: Intelligent Contracts (consensus primitive, not a demo wrapper)
 
@@ -13,7 +13,7 @@ LLM consensus on triage, valid reports auto-pay, disputes go to arbitration.
 | Reviewer concern | How BugBountyX answers it |
 |---|---|
 | Generic "AI decides X" | Triage is grounded in on-chain inputs only (scope + report + existing valid-report summaries). Validators re-run the same prompt independently. |
-| Schema-only validation | Consensus is `gl.eq_principle.prompt_comparative` with a substantive principle (decision must match exactly, severity within one tier). No `strict_eq` on LLM text. |
+| Schema-only validation | Consensus is `gl.eq_principle.prompt_comparative` with a substantive principle (decision must match exactly, severity within one tier, **derived `reward` must be identical** — the GEN amount each verdict would pay). No `strict_eq` on LLM text. |
 | Blind trust in LLM ids | Duplicate verdicts are **derived-checked**: the cited `duplicate_of` must exist, belong to the same program, and be `valid/paid` — else downgraded to `valid`. |
 | Hallucinated JSON | Defensive parsing (`_clean`/`_norm`): dict passthrough, ```json fence stripping, substring extraction, key-variation tolerance (`decision` vs `is_valid`/`is_duplicate`), severity coercion. |
 | Mixed nondet + money | LLM runs inside `triage_fn` only. All escrow math, fee splits, and status transitions are deterministic settlement **after** consensus. |
@@ -28,14 +28,21 @@ method:
 1. Copy `Program` + `Report` to memory (`gl.storage.copy_to_memory` — storage is
    invisible inside nondet blocks).
 2. Build a bounded dedup context (`_summaries`: last 60 reports, max 20 lines).
-3. `triage_fn` calls `gl.nondet.exec_prompt(prompt, response_format="json")` and
-   returns a normalized `{"decision","severity","duplicate_of","reason"}` dict.
+3. `triage_fn` calls `gl.nondet.exec_prompt(prompt, response_format="json")`,
+   normalizes it, then derives `reward` deterministically from
+   `severity + the program's reward table` (`_tier_payout`) and returns
+   `{"decision","severity","duplicate_of","reason","reward"}`.
 4. `gl.eq_principle.prompt_comparative(triage_fn, principle)` — every validator
    re-runs the prompt; an `EqComparative` LLM judge accepts only equivalent
-   verdicts. Divergent triage fails consensus and writes nothing.
-5. Deterministic settlement: apply decision, compute reward from stored tiers,
-   auto-pay via `emit_transfer` (hunter gets `payout - fee`, owner gets fee),
-   or leave `valid` claimable if escrow is underfunded.
+   verdicts: identical `decision`, matching `duplicate_of`, severity within one
+   tier, and **identical `reward`** — the exact GEN amount each verdict would
+   pay — so tier-tolerant severity can never move the transferred amount.
+   Divergent triage fails consensus and writes nothing.
+5. Deterministic settlement: apply the decision (including the derived-check
+   duplicate→valid downgrade), recompute the tier reward from stored tiers and
+   require it to equal the consensus `reward` (any mismatch reverts — fail
+   closed), auto-pay via `emit_transfer` (hunter gets `payout - fee`, owner gets
+   fee), or leave `valid` claimable if escrow is underfunded.
 
 All other writes (`create/fund/pause/resume/close`, `claim_payout`,
 `raise/resolve_dispute`, admin) are deterministic.

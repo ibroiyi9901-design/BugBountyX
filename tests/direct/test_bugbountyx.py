@@ -40,6 +40,7 @@ def test_triage_valid_pays_when_funded(direct_vm, direct_deploy, direct_alice):
     out = c.triage_report(1)
     assert out["decision"] in ("valid", "paid")
     assert out["severity"] == "high"
+    assert int(out["payout"]) == 500  # consensus-bound reward_high tier
 
 
 def test_triage_rejects_hallucinated_duplicate(direct_vm, direct_deploy, direct_alice):
@@ -59,7 +60,7 @@ def test_bad_severity_rejected(direct_vm, direct_deploy, direct_alice):
     c = direct_deploy("contracts/BugBountyX.py")
     direct_vm.sender = direct_alice
     c.create_program("P", "scope", 100, 50, 10, 5)
-    direct_vm.expect_revert("Invalid severity")
-    c.submit_report(1, "Title number one here",
-                    "A sufficiently long description of the finding",
-                    "step one, step two, step three", "impact", "apocalyptic")
+    with direct_vm.expect_revert("Invalid severity"):
+        c.submit_report(1, "Title number one here",
+                        "A sufficiently long description of the finding",
+                        "step one, step two, step three", "impact", "apocalyptic")

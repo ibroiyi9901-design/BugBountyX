@@ -4,6 +4,7 @@ submits reports, validators reach LLM consensus (comparative eq. principle),
 valid reports auto-pay, owner arbitrates disputes. Payout math is deterministic."""
 from dataclasses import dataclass
 from genlayer import *
+from datetime import datetime, timezone
 import json
 # NOTE: no top-level gl.evm / contract-interface blocks here on purpose.
 # Studio builds the ABI by importing this module; anything touching versioned
@@ -49,6 +50,26 @@ def _norm(raw: object) -> dict:  # pure: runs on leader + every validator
     return {"decision": dec, "severity": _coerce_sev(d.get("severity", "info")),
             "duplicate_of": _coerce_u(d.get("duplicate_of", 0)),
             "reason": str(d.get("reason", ""))[:280]}
+def _tier_payout(rw: tuple, sev: object) -> int:
+    """Reward the program pays for a severity tier. Pure: leader and every
+    validator derive it from the same reward table, so `prompt_comparative`
+    can bind the exact GEN amount even when severity is only tier-tolerant.
+    Independent of `decision` so deterministic downgrades (hallucinated
+    duplicate -> valid) stay inside the consensus-bound amount."""
+    s = _coerce_sev(sev)
+    if s == "critical":
+        return int(rw[0])
+    if s == "high":
+        return int(rw[1])
+    if s == "medium":
+        return int(rw[2])
+    if s == "low":
+        return int(rw[3])
+    return 0
+def _now() -> u256:
+    """Transaction timestamp: the GenVM clock is pinned to the tx datetime, so
+    leader and validators read the same value. There is no block context."""
+    return u256(int(datetime.now(timezone.utc).timestamp()))
 @allow_storage
 @dataclass
 class Program:
@@ -180,7 +201,7 @@ class BugBountyX(gl.Contract):
         pid = self.next_program_id
         self.programs[pid] = Program(pid, gl.message.sender_address, name[:120],
             scope[:4000], reward_critical, reward_high, reward_medium, reward_low,
-            u256(0), "active", gl.block.timestamp)
+            u256(0), "active", _now())
         self.program_report_counts[pid] = u256(0)
         self.next_program_id = pid + u256(1)
         return pid
@@ -252,7 +273,7 @@ class BugBountyX(gl.Contract):
         hunter = gl.message.sender_address
         self.reports[rid] = Report(rid, program_id, hunter, title[:200],
             description[:6000], poc[:6000], impact[:2000], sev, "", "pending",
-            u256(0), u256(0), gl.block.timestamp, u256(0), "")
+            u256(0), u256(0), _now(), u256(0), "")
         self._append(program_id, rid, hunter)
         self.next_report_id = rid + u256(1)
         return rid
@@ -270,6 +291,8 @@ class BugBountyX(gl.Contract):
         scope_m, title_m, desc_m = p0.scope, r0.title, r0.description
         poc_m, impact_m, claimed_m = r0.poc, r0.impact, r0.severity_claimed
         existing_m = self._summaries(r0.program_id, report_id)
+        rw_m = (int(p0.reward_critical), int(p0.reward_high),
+                int(p0.reward_medium), int(p0.reward_low))
         def triage_fn() -> dict:
             prompt = ("You are a senior security researcher triaging a bug bounty.\n"
                 f"SCOPE:\n{scope_m}\nREPORT:\nTitle: {title_m}\nDesc: {desc_m}\n"
@@ -279,13 +302,18 @@ class BugBountyX(gl.Contract):
                 'ONLY JSON: {"decision":"valid|invalid|duplicate",'
                 '"severity":"critical|high|medium|low|info",'
                 '"duplicate_of":0,"reason":"one line"}')
-            return _norm(gl.nondet.exec_prompt(prompt, response_format="json"))
+            out = _norm(gl.nondet.exec_prompt(prompt, response_format="json"))
+            out["reward"] = _tier_payout(rw_m, out["severity"])
+            return out
         result = gl.eq_principle.prompt_comparative(triage_fn,
             "The `decision` must be identical. If duplicate, `duplicate_of` must "
-            "match. `severity` may differ by at most one tier but same risk band.")
+            "match. `severity` may differ by at most one tier but same risk band, "
+            "and `reward` — the GEN the program pays for that severity per its "
+            "reward table — must be identical: verdicts that would pay different "
+            "amounts are not equivalent.")
         r = self.reports[report_id]  # deterministic settlement below
         dec, sev = str(result.get("decision", "invalid")), _coerce_sev(result.get("severity", "info"))
-        dup, reason, now = _coerce_u(result.get("duplicate_of", 0)), str(result.get("reason", ""))[:280], gl.block.timestamp
+        dup, reason, now = _coerce_u(result.get("duplicate_of", 0)), str(result.get("reason", ""))[:280], _now()
         if dec == "duplicate":  # verify cited id, don't trust LLM blindly
             ok = (dup != u256(0) and dup in self.reports
                   and self.reports[dup].program_id == r.program_id
@@ -298,6 +326,8 @@ class BugBountyX(gl.Contract):
             r.status, r.severity_ai, r.duplicate_of = "duplicate", sev, dup
         else:
             reward = self._reward_for(r.program_id, sev)
+            if _coerce_u(result.get("reward", 0)) != reward:  # fail closed
+                raise gl.vm.UserError("Payout not bound by consensus")
             r.severity_ai, r.payout = sev, reward
             if reward == u256(0):
                 r.status = "valid"
@@ -357,11 +387,11 @@ class BugBountyX(gl.Contract):
         if o == "valid":
             reward = self._reward_for(r.program_id, sev)
             r.severity_ai, r.payout, r.duplicate_of = sev, reward, u256(0)
-            r.resolved_at = gl.block.timestamp
+            r.resolved_at = _now()
             r.status = "valid" if reward == u256(0) else ("paid" if self._pay(r.program_id, r.hunter, reward) else "valid")
         else:
             r.status = "invalid" if o == "invalid" else "duplicate"
-            r.severity_ai, r.resolved_at = sev, gl.block.timestamp
+            r.severity_ai, r.resolved_at = sev, _now()
         self.reports[d.report_id] = r
         self.disputes[dispute_id] = d
     @gl.public.write

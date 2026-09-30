@@ -155,7 +155,7 @@ class BugBountyX:
         scope:   str,   # JSON string
         rewards: str,   # JSON: {"critical": "1000000000000000000", ...}
     ) -> str:
-        pid = self._hash(f"{gl.message.sender}{name}{gl.block.timestamp}")
+        pid = self._hash(f"{gl.message.sender}{name}{_now()}")
         reward_map = json.loads(rewards)
 
         self.programs[pid] = Program(
@@ -167,7 +167,7 @@ class BugBountyX:
             escrow_bal   = 0,
             status       = ProgramStatus.ACTIVE,
             report_count = 0,
-            created_at   = gl.block.timestamp,
+            created_at   = _now(),
         )
         self.program_reports[pid] = []
         return pid
@@ -232,7 +232,7 @@ class BugBountyX:
         ], "Invalid severity"
 
         rid = self._hash(
-            f"{gl.message.sender}{program_id}{title}{gl.block.timestamp}"
+            f"{gl.message.sender}{program_id}{title}{_now()}"
         )
         hunter = gl.message.sender
 
@@ -249,7 +249,7 @@ class BugBountyX:
             status      = ReportStatus.PENDING,
             duplicate_of= "",
             payout      = 0,
-            submitted_at= gl.block.timestamp,
+            submitted_at= _now(),
             resolved_at = 0,
         )
 
@@ -326,13 +326,13 @@ Respond ONLY in this exact JSON format:
         if not result.get("in_scope") or not result.get("is_valid"):
             r.status      = ReportStatus.INVALID
             r.ai_severity = result.get("severity", Severity.INFO)
-            r.resolved_at = gl.block.timestamp
+            r.resolved_at = _now()
 
         elif result.get("is_duplicate"):
             r.status      = ReportStatus.DUPLICATE
             r.duplicate_of= result.get("duplicate_of", "")
             r.ai_severity = result.get("severity", r.severity)
-            r.resolved_at = gl.block.timestamp
+            r.resolved_at = _now()
 
         else:
             severity  = result.get("severity", r.severity)
@@ -340,7 +340,7 @@ Respond ONLY in this exact JSON format:
             r.status      = ReportStatus.VALID
             r.ai_severity = severity
             r.payout      = payout
-            r.resolved_at = gl.block.timestamp
+            r.resolved_at = _now()
             # Auto-pay if escrow has funds
             self._release_payment(r, payout)
 
@@ -431,10 +431,10 @@ Respond ONLY in this exact JSON format:
             self._release_payment(r, payout)
         elif outcome == "invalid":
             r.status     = ReportStatus.INVALID
-            r.resolved_at= gl.block.timestamp
+            r.resolved_at= _now()
         elif outcome == "duplicate":
             r.status     = ReportStatus.DUPLICATE
-            r.resolved_at= gl.block.timestamp
+            r.resolved_at= _now()
 
         self.reports[d.report_id] = r
         self.disputes[dispute_id] = d
@@ -612,6 +612,17 @@ The AI gets a compact summary of existing valid reports — title + severity —
 
 **Dispute flow**
 Disputes freeze the report status and escalate to platform owner as arbitrator. Production upgrade: replace owner with a multi-sig or DAO.
+
+**Timestamps**
+GenVM exposes no block context (`gl.block` does not exist). Time is the
+transaction clock, identical on every validator; the contract reads it with
+`_now()` = `int(datetime.now(timezone.utc).timestamp())`.
+
+**Consensus binds the money**
+`triage_report` tolerates severity differing by one tier, so the derived
+`reward` (severity → program reward table) is part of the compared output and
+must be identical across validators; settlement re-derives it and reverts on any
+mismatch. Severity tolerance can never change the transferred amount.
 
 ---
 
