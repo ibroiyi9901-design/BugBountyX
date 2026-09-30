@@ -9,6 +9,11 @@ LLM consensus on triage, valid reports auto-pay, disputes go to arbitration.
 - Deployed: **`0x82Bf017B38A4A4576b92A0442c33e79927F21298`** on StudioNet —
   [Studio](https://studio.genlayer.com/?import-contract=0x82Bf017B38A4A4576b92A0442c33e79927F21298) ·
   [Explorer](https://explorer-studio.genlayer.com/address/0x82Bf017B38A4A4576b92A0442c33e79927F21298)
+  (deploy tx `0x8933c4cf…76089`); identical-source deployment
+  `0x196b9a827ab4c616AD5210E6f9A9CD09a242D1d0` —
+  [Studio](https://studio.genlayer.com/?import-contract=0x196b9a827ab4c616AD5210E6f9A9CD09a242D1d0) ·
+  [Explorer](https://explorer-studio.genlayer.com/address/0x196b9a827ab4c616AD5210E6f9A9CD09a242D1d0)
+  (deploy tx `0x6b9a90f4…82e3b9`, FINALIZED 5/5 agree)
 - Deployed source is **byte-identical** to this file's contract,
   sha256 `143a41e0…3f01` (see [`proof/`](proof/))
 - Category: Intelligent Contracts (consensus primitive, not a demo wrapper)
