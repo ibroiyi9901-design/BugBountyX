@@ -4,7 +4,7 @@ Standalone, reusable primitive for decentralized bug bounties: sponsors fund GEN
 escrow per severity, hunters submit structured reports, GenLayer validators reach
 LLM consensus on triage, valid reports auto-pay, disputes go to arbitration.
 
-- Contract: `contracts/BugBountyX.py` — **480 lines**, single file, pinned runner
+- Contract: `contracts/BugBountyX.py` — **502 lines**, single file, pinned runner
 - Chain: GenLayer (testnet-asimov / testnet-bradbury / studionet / localnet)
 - Category: Intelligent Contracts (consensus primitive, not a demo wrapper)
 
@@ -70,7 +70,7 @@ All other writes (`create/fund/pause/resume/close`, `claim_payout`,
 | `raise_dispute(rid, reason)` | write | hunter/sponsor | Freeze to `disputed`, returns `did`. |
 | `resolve_dispute(did, outcome, sev)` | write | owner | Arbitrate + pay if `valid`. |
 | `requeue_disputed(rid)` | write | owner/sponsor | Back to `pending` for re-triage. |
-| `get_program / get_report / get_program_reports / get_pending_queue / get_program_stats` | view | anyone | Reads (+ pagination; the two id-list views return JSON-array strings to keep the ABI to primitives). |
+| `get_program / get_report / get_dispute / get_program_reports / get_pending_queue / get_program_stats` | view | anyone | Reads (+ pagination; the two id-list views return JSON-array strings to keep the ABI to primitives). |
 | `set_fee / transfer_ownership` | write | owner | Fee ≤ 10%, ownership. |
 
 ## Run / deploy
@@ -90,7 +90,20 @@ genlayer call <addr> get_report '[1]'
 Direct tests (leader-only, mocked LLM, ~30ms each):
 
 ```bash
-pytest tests/direct -v
+python3.12 -m pytest tests/direct -v
+```
+
+Offline audit (no GenVM runtime needed — 32 structural and helper checks):
+
+```bash
+python3.12 scripts/preflight.py
+```
+
+Automated CLI smoke sequence against a deployment:
+
+```bash
+BUGBOUNTYX_CONTRACT=<addr> scripts/smoke.sh          # read-only, all 6 views
+BUGBOUNTYX_CONTRACT=<addr> scripts/smoke.sh --write  # full lifecycle, spends fees
 ```
 
 Integration (full consensus, needs Studio/localnet):
@@ -98,6 +111,28 @@ Integration (full consensus, needs Studio/localnet):
 ```bash
 gltest tests/integration -v -s
 ```
+
+## Repository layout
+
+```text
+contracts/BugBountyX.py    the primitive, 502 lines, single file
+docs/                      architecture, consensus, integration, threat model
+scripts/preflight.py       offline audit, no GenVM runtime required
+scripts/smoke.sh           CLI read + write lifecycle smoke sequence
+tests/direct/              Direct Mode: leader-only, mocked LLM
+tests/test_normalizer.py   pure helpers vs adversarial LLM output, no node needed
+proof/                     sanitized live receipts (empty until deployed)
+examples/                  annotated end-to-end walkthrough + capture convention
+artifacts/                 gltest build output (gitignored)
+```
+
+## Further reading
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — layer separation, lifecycle, bounded cost, ABI discipline
+- [`docs/CONSENSUS.md`](docs/CONSENSUS.md) — why `prompt_comparative`, the equivalence principle field by field, prompt-injection boundary
+- [`docs/INTEGRATION.md`](docs/INTEGRATION.md) — consumer patterns, status semantics, owner/sponsor authority limits
+- [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) — every threat, its mitigation, and the residual limitations
+- [`DEPLOYMENT.md`](DEPLOYMENT.md) — lint, preflight, deploy, and the full annotated command sheet
 
 ## Reuse ideas
 

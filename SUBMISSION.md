@@ -34,8 +34,8 @@ payouts by swapping the prompt.
   showing MAJORITY_AGREE / FINALIZED.
 
 ## Pre-submit checklist
-- [ ] genvm-lint check passes (lint ok + validation ok, 480 lines, pinned runner)
+- [ ] genvm-lint check passes (lint ok + validation ok, 502 lines, pinned runner)
       run as: `GENVM_VERSION=v0.3.0-rc7 genvm-lint check contracts/BugBountyX.py`
 - [ ] README explains purpose + consensus + state design (done)
-- [ ] tests pass: `python3.12 -m pytest tests/ -q` (8 passed)
+- [ ] tests pass: `python3.12 -m pytest tests/ -q` (10 passed)
 - [ ] Deploy to testnet-bradbury/studionet and paste address + tx as evidence
