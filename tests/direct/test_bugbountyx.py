@@ -64,3 +64,45 @@ def test_bad_severity_rejected(direct_vm, direct_deploy, direct_alice):
         c.submit_report(1, "Title number one here",
                         "A sufficiently long description of the finding",
                         "step one, step two, step three", "impact", "apocalyptic")
+
+
+def test_arbitration_pays_from_the_bound_reward_table(direct_vm, direct_deploy, direct_alice,
+                                                      direct_owner):
+    """A sponsor must not be able to retier the table between raise_dispute and
+    resolve_dispute to change what the arbitration is worth. Without the snapshot
+    bound at raise time, zeroing the table here would pay the hunter 0."""
+    c = direct_deploy("contracts/BugBountyX.py")
+    direct_vm.sender = direct_alice
+    c.create_program("P", "scope", 1000, 500, 100, 50)
+    c.submit_report(1, "Title number one here",
+                    "A sufficiently long description of the finding",
+                    "step one, step two, step three", "impact", "high")
+    direct_vm.mock_llm(".*", _triage_json("valid", "high", 0, "exploitable"))
+    c.triage_report(1)
+    assert c.get_report(1)["payout"] == 500
+
+    did = c.raise_dispute(1, "severity is understated")
+    assert c.get_report(1)["status"] == "disputed"
+    assert c.get_dispute(int(did))["bound_rewards"]["high"] == 500
+
+    # the sponsor zeroes the live table mid-dispute
+    c.update_rewards(1, 0, 0, 0, 0)
+    assert c.get_program(1)["rewards"]["high"] == 0
+
+    # arbitration is owner-only, and pays the tier bound when the dispute was raised
+    direct_vm.sender = direct_owner
+    c.resolve_dispute(int(did), "valid", "high")
+    r = c.get_report(1)
+    assert r["payout"] == 500, "arbitration must pay the tier bound at raise_dispute"
+    assert r["severity_ai"] == "high"
+    assert c.get_dispute(int(did))["resolved"] is True
+
+
+def test_closed_program_cannot_be_retiered(direct_vm, direct_deploy, direct_alice):
+    c = direct_deploy("contracts/BugBountyX.py")
+    direct_vm.sender = direct_alice
+    c.create_program("P", "scope", 1000, 500, 100, 50)
+    c.close_program(1)
+    assert c.get_program(1)["status"] == "closed"
+    with direct_vm.expect_revert("Program closed"):
+        c.update_rewards(1, 1, 1, 1, 1)

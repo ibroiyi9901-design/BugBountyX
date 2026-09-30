@@ -111,6 +111,13 @@ class Dispute:
     reason: str
     resolved: bool
     outcome: str
+    # Reward table in force when the dispute was raised. Arbitration pays from
+    # this snapshot, never the program's live table, so a sponsor cannot retier
+    # mid-dispute to change what an arbitration is worth.
+    reward_critical: u256
+    reward_high: u256
+    reward_medium: u256
+    reward_low: u256
 class BugBountyX(gl.Contract):
     owner: Address
     fee_bps: u256
@@ -251,6 +258,8 @@ class BugBountyX(gl.Contract):
         p = self.programs[program_id]
         if p.sponsor != gl.message.sender_address:
             raise gl.vm.UserError("Only sponsor")
+        if p.status == "closed":
+            raise gl.vm.UserError("Program closed")
         vals = (int(reward_critical), int(reward_high), int(reward_medium), int(reward_low))
         if not (vals[0] >= vals[1] >= vals[2] >= vals[3]):
             raise gl.vm.UserError("Rewards must descend")
@@ -364,7 +373,8 @@ class BugBountyX(gl.Contract):
         if not reason.strip():
             raise gl.vm.UserError("Reason required")
         did = self.next_dispute_id
-        self.disputes[did] = Dispute(did, report_id, caller, reason[:1000], False, "")
+        self.disputes[did] = Dispute(did, report_id, caller, reason[:1000], False, "",
+            p.reward_critical, p.reward_high, p.reward_medium, p.reward_low)
         self.next_dispute_id = did + u256(1)
         r.status = "disputed"
         self.reports[report_id] = r
@@ -385,7 +395,10 @@ class BugBountyX(gl.Contract):
         sev = _coerce_sev(new_severity)
         d.resolved, d.outcome = True, o
         if o == "valid":
-            reward = self._reward_for(r.program_id, sev)
+            # Pay from the reward table snapshotted at raise_dispute, so the
+            # sponsor cannot retier between the dispute and the arbitration.
+            reward = u256(_tier_payout((int(d.reward_critical), int(d.reward_high),
+                int(d.reward_medium), int(d.reward_low)), sev))
             r.severity_ai, r.payout, r.duplicate_of = sev, reward, u256(0)
             r.resolved_at = _now()
             r.status = "valid" if reward == u256(0) else ("paid" if self._pay(r.program_id, r.hunter, reward) else "valid")
@@ -466,6 +479,15 @@ class BugBountyX(gl.Contract):
         return {"program_id": int(program_id), "total": n, "valid": valid,
             "invalid": invalid, "duplicates": dups, "pending": pending,
             "total_paid": paid_total, "escrow_bal": int(p.escrow_bal)}
+    @gl.public.view
+    def get_dispute(self, dispute_id: u256) -> dict:
+        d = self.disputes[dispute_id]
+        return {"id": int(dispute_id), "report_id": int(d.report_id),
+            "raised_by": str(d.raised_by), "reason": d.reason,
+            "resolved": d.resolved, "outcome": d.outcome,
+            "bound_rewards": {"critical": int(d.reward_critical),
+            "high": int(d.reward_high), "medium": int(d.reward_medium),
+            "low": int(d.reward_low), "info": 0}}
     @gl.public.write
     def set_fee(self, bps: u256) -> None:
         if gl.message.sender_address != self.owner:  # [EXPECTED]
