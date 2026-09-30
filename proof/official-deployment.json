@@ -1,0 +1,50 @@
+{
+  "_comment": "Live GenLayer StudioNet deployment of this repository's source. Sanitized: no private keys, tokens, or machine-local configuration. Verifier validator addresses are public on-chain identities, not secrets.",
+  "network": "studionet (GenLayer Studio Network)",
+  "contract_address": "0x82Bf017B38A4A4576b92A0442c33e79927F21298",
+  "studio_url": "https://studio.genlayer.com/?import-contract=0x82Bf017B38A4A4576b92A0442c33e79927F21298",
+  "explorer_url": "https://explorer-studio.genlayer.com/address/0x82Bf017B38A4A4576b92A0442c33e79927F21298",
+  "deployment_tx_hash": "0x8933c4cf92ebc9080fbe33d43ce41062930d97d0991dd81855ae5e9675c76089",
+  "creator_address": "0x37cDbd86743e2b80486413E89ca4c70A58147889",
+  "creation_timestamp": "2026-09-30T10:44:07.824804+00:00",
+  "receipt": {
+    "status_name": "FINALIZED",
+    "status_code": 7,
+    "result_code": 6,
+    "leader_execution_result": "SUCCESS",
+    "consensus_votes": {
+      "agree": 3,
+      "idle": 2
+    },
+    "note": "Two of five StudioNet validators were idle and cast no vote. Finalization required 3 agreements, which were reached. Leader and all 3 agreeing validators returned execution_result SUCCESS."
+  },
+  "abi": {
+    "methods_total": 20,
+    "views": 6,
+    "writes": 14,
+    "payable": 1,
+    "method_names": [
+      "claim_payout",
+      "close_program",
+      "create_program",
+      "fund_program",
+      "get_dispute",
+      "get_pending_queue",
+      "get_program",
+      "get_program_reports",
+      "get_program_stats",
+      "get_report",
+      "pause_program",
+      "raise_dispute",
+      "requeue_disputed",
+      "resolve_dispute",
+      "resume_program",
+      "set_fee",
+      "submit_report",
+      "transfer_ownership",
+      "triage_report",
+      "update_rewards"
+    ]
+  },
+  "state": "DEPLOYED BUT UNUSED - see empty-state-reads.json"
+}

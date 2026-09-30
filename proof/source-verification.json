@@ -1,0 +1,22 @@
+{
+  "_comment": "Deployed source retrieved via JSON-RPC gen_getContractCode (base64-encoded) and compared to the repository file byte for byte.",
+  "rpc_endpoint": "https://explorer-studio.genlayer.com/api",
+  "rpc_methods_used": [
+    "gen_getContractCode",
+    "gen_getContractSchema"
+  ],
+  "contract_address": "0x82Bf017B38A4A4576b92A0442c33e79927F21298",
+  "repository_file": "contracts/BugBountyX.py",
+  "git_commit": "acab99c",
+  "repository_sha256": "143a41e082289279223be283384b9c862eee6eaa345d4d3e9890194ba9273f01",
+  "deployed_sha256": "143a41e082289279223be283384b9c862eee6eaa345d4d3e9890194ba9273f01",
+  "byte_identical": true,
+  "bytes": 23262,
+  "lines": 502,
+  "runner_pin": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6",
+  "reproduce": [
+    "curl -s -X POST https://explorer-studio.genlayer.com/api -H 'content-type: application/json' \\",
+    "  -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"gen_getContractCode\",\"params\":[\"0x82Bf017B38A4A4576b92A0442c33e79927F21298\"]}'",
+    "base64 -d <<< '<result>' | sha256sum   # must equal deployed_sha256"
+  ]
+}

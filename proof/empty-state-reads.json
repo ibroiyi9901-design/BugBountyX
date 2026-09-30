@@ -1,0 +1,46 @@
+{
+  "_comment": "State reads against the live contract. Every record lookup reverts with exit_code 1 because the TreeMap holds no such key, and the pending queue is empty. This deployment is live but UNUSED: no program, no report, no dispute, no escrow.",
+  "contract_address": "0x82Bf017B38A4A4576b92A0442c33e79927F21298",
+  "reads": [
+    {
+      "call": "get_pending_queue(10)",
+      "result": "[]",
+      "meaning": "no report is awaiting triage"
+    },
+    {
+      "call": "get_program_reports(1, 0, 20)",
+      "result": "[]",
+      "meaning": "program 1 holds no reports"
+    },
+    {
+      "call": "get_program(1)",
+      "execution_result": "ERROR",
+      "result_base64": "AmV4aXRfY29kZSAx",
+      "decoded": "exit_code 1",
+      "meaning": "program 1 does not exist; a TreeMap read of an absent key reverts"
+    },
+    {
+      "call": "get_program_stats(1)",
+      "execution_result": "ERROR",
+      "result_base64": "AmV4aXRfY29kZSAx",
+      "decoded": "exit_code 1",
+      "meaning": "program 1 does not exist"
+    },
+    {
+      "call": "get_report(1)",
+      "execution_result": "ERROR",
+      "result_base64": "AmV4aXRfY29kZSAx",
+      "decoded": "exit_code 1",
+      "meaning": "report 1 does not exist"
+    },
+    {
+      "call": "get_dispute(1)",
+      "execution_result": "ERROR",
+      "result_base64": "AmV4aXRfY29kZSAx",
+      "decoded": "exit_code 1",
+      "meaning": "dispute 1 does not exist"
+    }
+  ],
+  "consequence": "There is NO triage_report receipt for this deployment, because no report has ever been submitted. The consensus evidence described in README.md and docs/ has not yet been produced on-chain.",
+  "next_step": "Run scripts/smoke.sh --write against this address to produce the missing lifecycle evidence."
+}

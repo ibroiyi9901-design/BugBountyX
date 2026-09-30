@@ -29,9 +29,16 @@ paginated views, direct tests included. Ports to freelance/grant/moderation
 payouts by swapping the prompt.
 
 ## Evidence
-- Paste your GitHub repo URL here (contracts/BugBountyX.py + README + tests)
-- After deploy, add: explorer link + contract address + a triage_report tx hash
-  showing MAJORITY_AGREE / FINALIZED.
+- Repo: https://github.com/habte-selassie27/BugBountyX (contracts/BugBountyX.py + docs + tests + scripts)
+- Deployed: `0x82Bf017B38A4A4576b92A0442c33e79927F21298` on StudioNet
+  https://explorer-studio.genlayer.com/address/0x82Bf017B38A4A4576b92A0442c33e79927F21298
+- Deploy tx: `0x8933c4cf92ebc9080fbe33d43ce41062930d97d0991dd81855ae5e9675c76089` (FINALIZED, 3 agree / 2 idle)
+- Deployed source is byte-identical to `contracts/BugBountyX.py`,
+  sha256 `143a41e082289279223be283384b9c862eee6eaa345d4d3e9890194ba9273f01`
+  (reproduce via `gen_getContractCode`; see proof/source-verification.json)
+- STILL NEEDED: a `triage_report` tx hash showing MAJORITY_AGREE / FINALIZED.
+  The deployment is live but unused, so no report has ever been triaged. Run
+  `scripts/smoke.sh --write` against the address above to produce it.
 
 ## Pre-submit checklist
 - [ ] genvm-lint check passes (lint ok + validation ok, 502 lines, pinned runner)

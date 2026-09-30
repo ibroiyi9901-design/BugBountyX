@@ -8,12 +8,17 @@
 | Offline preflight | `scripts/preflight.py` — 32/32 checks pass |
 | Direct Mode tests | `tests/direct/test_bugbountyx.py` — leader-only, mocked LLM |
 | LLM-resilience tests | `tests/test_normalizer.py` — no node required |
-| Live deployment | **none yet** — no receipt exists in `proof/` |
-| Public testnet address | **none yet** |
+| Live deployment | `0x82Bf017B38A4A4576b92A0442c33e79927F21298` on StudioNet, deploy tx `0x8933c4cf…5c76089`, `FINALIZED` |
+| Source verification | deployed source **byte-identical** to `contracts/BugBountyX.py`, sha256 `143a41e0…3f01` |
+| Consensus evidence | **none yet** — the deployment is live but unused; no `triage_report` has ever run |
 
-Direct Mode runs the leader function only. It is not consensus evidence. The
-first item that should be added to `proof/` is a real `triage_report` receipt
-showing `MAJORITY_AGREE` and `FINALIZED`.
+Direct Mode runs the leader function only. It is not consensus evidence.
+
+The contract **is deployed** at `0x82Bf017B38A4A4576b92A0442c33e79927F21298`
+on StudioNet and its on-chain source is byte-identical to this repository. But it
+has never been used: every record read reverts `exit_code 1` and the pending
+queue is empty. So the `triage_report` receipt that `proof/` still needs has not
+been produced. Run `scripts/smoke.sh --write` against that address to create it.
 
 ## Requirements
 

@@ -6,6 +6,11 @@ LLM consensus on triage, valid reports auto-pay, disputes go to arbitration.
 
 - Contract: `contracts/BugBountyX.py` — **502 lines**, single file, pinned runner
 - Chain: GenLayer (testnet-asimov / testnet-bradbury / studionet / localnet)
+- Deployed: **`0x82Bf017B38A4A4576b92A0442c33e79927F21298`** on StudioNet —
+  [Studio](https://studio.genlayer.com/?import-contract=0x82Bf017B38A4A4576b92A0442c33e79927F21298) ·
+  [Explorer](https://explorer-studio.genlayer.com/address/0x82Bf017B38A4A4576b92A0442c33e79927F21298)
+- Deployed source is **byte-identical** to this file's contract,
+  sha256 `143a41e0…3f01` (see [`proof/`](proof/))
 - Category: Intelligent Contracts (consensus primitive, not a demo wrapper)
 
 ## Why this is not a "thin LLM wrapper"
@@ -78,13 +83,20 @@ All other writes (`create/fund/pause/resume/close`, `claim_payout`,
 ```bash
 genvm-lint check contracts/BugBountyX.py   # expect: lint ok
 npm install -g genlayer
-genlayer network set testnet-bradbury
+genlayer network set studionet
 genlayer deploy --contract contracts/BugBountyX.py
 # fund (2 GEN), submit, triage:
-genlayer write <addr> fund_program '[1]' --value 2000000000000000000
-genlayer write <addr> submit_report '[1,"Reentrancy in Vault.withdraw","...","1. deposit 2. reenter...","funds drainable","high"]'
-genlayer write <addr> triage_report '[1]'
-genlayer call <addr> get_report '[1]'
+export BUGBOUNTYX=<deployed address>
+genlayer write "$BUGBOUNTYX" fund_program '[1]' --value 2000000000000000000
+genlayer write "$BUGBOUNTYX" submit_report '[1,"Reentrancy in Vault.withdraw","...","1. deposit 2. reenter...","funds drainable","high"]'
+genlayer write "$BUGBOUNTYX" triage_report '[1]'
+genlayer call "$BUGBOUNTYX" get_report '[1]'
+```
+
+Or run the whole lifecycle, including the dispute path, in one command:
+
+```bash
+BUGBOUNTYX_CONTRACT=<deployed address> scripts/smoke.sh --write
 ```
 
 Direct tests (leader-only, mocked LLM, ~30ms each):
